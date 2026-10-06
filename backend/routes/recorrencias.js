@@ -3,80 +3,88 @@ import { getDatabase } from '../database.js';
 
 const router = express.Router();
 
-// Criar recorrência
 router.post('/', async (req, res) => {
   try {
-    const { usuario_id, categoria_id, tipo, descricao, valor, frequencia, dia_mes, data_inicio, data_fim } = req.body;
+    const { usuario_id, categoria_id, tipo, descricao, valor, data_lancamento, status, notas } = req.body;
     const db = getDatabase();
 
+    if (!usuario_id || !categoria_id || !tipo || !descricao || !valor || !data_lancamento) {
+      return res.status(400).json({ erro: 'Dados obrigatórios faltando.' });
+    }
+
     await db.run(
-      `INSERT INTO recorrencias (usuario_id, categoria_id, tipo, descricao, valor, frequencia, dia_mes, data_inicio, data_fim)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [usuario_id, categoria_id, tipo, descricao, valor, frequencia, dia_mes, data_inicio, data_fim || null]
+      `INSERT INTO lancamentos (usuario_id, categoria_id, tipo, descricao, valor, data_lancamento, status, notas)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [usuario_id, categoria_id, tipo, descricao, valor, data_lancamento, status || 'pendente', notas || '']
     );
 
-    res.status(201).json({ mensagem: 'Recorrência criada com sucesso' });
+    return res.status(201).json({ mensagem: 'Lançamento criado com sucesso.' });
   } catch (erro) {
-    res.status(500).json({ erro: erro.message });
+    return res.status(500).json({ erro: erro.message });
   }
 });
 
-// Listar recorrências
 router.get('/', async (req, res) => {
   try {
-    const { usuario_id, ativa } = req.query;
+    const { usuario_id, mes, ano, status } = req.query;
     const db = getDatabase();
-    let query = 'SELECT r.*, c.nome as categoria FROM recorrencias r JOIN categorias c ON r.categoria_id = c.id WHERE 1=1';
+    let query = `SELECT l.*, c.nome AS categoria, c.icone AS categoria_icone
+                 FROM lancamentos l
+                 JOIN categorias c ON l.categoria_id = c.id
+                 WHERE 1 = 1`;
     const params = [];
 
     if (usuario_id) {
-      query += ' AND r.usuario_id = ?';
+      query += ' AND l.usuario_id = ?';
       params.push(usuario_id);
     }
 
-    if (ativa !== undefined) {
-      query += ' AND r.ativa = ?';
-      params.push(ativa === 'true' ? 1 : 0);
+    if (mes && ano) {
+      query += ' AND strftime(\'%m\', l.data_lancamento) = ? AND strftime(\'%Y\', l.data_lancamento) = ?';
+      params.push(String(mes).padStart(2, '0'), String(ano));
     }
 
-    query += ' ORDER BY r.data_inicio DESC';
+    if (status) {
+      query += ' AND l.status = ?';
+      params.push(status);
+    }
 
-    const recorrencias = await db.all(query, params);
-    res.json(recorrencias);
+    query += ' ORDER BY l.data_lancamento DESC, l.id DESC';
+
+    const lancamentos = await db.all(query, params);
+    return res.json(lancamentos);
   } catch (erro) {
-    res.status(500).json({ erro: erro.message });
+    return res.status(500).json({ erro: erro.message });
   }
 });
 
-// Atualizar recorrência
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { descricao, valor, frequencia, dia_mes, data_fim, ativa } = req.body;
+    const { descricao, valor, status, data_pagamento, notas, categoria_id, tipo } = req.body;
     const db = getDatabase();
 
     await db.run(
-      `UPDATE recorrencias SET descricao = ?, valor = ?, frequencia = ?, dia_mes = ?, data_fim = ?, ativa = ?
+      `UPDATE lancamentos
+       SET descricao = ?, valor = ?, status = ?, data_pagamento = ?, notas = ?, categoria_id = ?, tipo = ?, atualizado_em = CURRENT_TIMESTAMP
        WHERE id = ?`,
-      [descricao, valor, frequencia, dia_mes, data_fim, ativa, id]
+      [descricao, valor, status, data_pagamento || null, notas || '', categoria_id, tipo, id]
     );
 
-    res.json({ mensagem: 'Recorrência atualizada com sucesso' });
+    return res.json({ mensagem: 'Lançamento atualizado com sucesso.' });
   } catch (erro) {
-    res.status(500).json({ erro: erro.message });
+    return res.status(500).json({ erro: erro.message });
   }
 });
 
-// Deletar recorrência
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const db = getDatabase();
-
-    await db.run('DELETE FROM recorrencias WHERE id = ?', [id]);
-    res.json({ mensagem: 'Recorrência deletada com sucesso' });
+    await db.run('DELETE FROM lancamentos WHERE id = ?', [id]);
+    return res.json({ mensagem: 'Lançamento removido com sucesso.' });
   } catch (erro) {
-    res.status(500).json({ erro: erro.message });
+    return res.status(500).json({ erro: erro.message });
   }
 });
 

@@ -1,0 +1,77 @@
+import express from 'express';
+import { getDatabase } from '../database.js';
+
+const router = express.Router();
+
+router.get('/', async (req, res) => {
+  try {
+    const { usuario_id, mes, ano } = req.query;
+    const db = getDatabase();
+
+    if (!usuario_id || !mes || !ano) {
+      return res.status(400).json({ erro: 'Usuário, mês e ano são obrigatórios.' });
+    }
+
+    const mesPadrao = String(mes).padStart(2, '0');
+
+    const receitas = await db.get(
+      `SELECT COALESCE(SUM(valor), 0) AS total
+       FROM lancamentos
+       WHERE usuario_id = ?
+         AND tipo = 'receita'
+         AND status = 'pago'
+         AND strftime('%m', data_lancamento) = ?
+         AND strftime('%Y', data_lancamento) = ?`,
+      [usuario_id, mesPadrao, ano]
+    );
+
+    const despesas = await db.get(
+      `SELECT COALESCE(SUM(valor), 0) AS total
+       FROM lancamentos
+       WHERE usuario_id = ?
+         AND tipo = 'despesa'
+         AND status = 'pago'
+         AND strftime('%m', data_lancamento) = ?
+         AND strftime('%Y', data_lancamento) = ?`,
+      [usuario_id, mesPadrao, ano]
+    );
+
+    const pendentes = await db.get(
+      `SELECT COALESCE(SUM(valor), 0) AS total
+       FROM lancamentos
+       WHERE usuario_id = ?
+         AND status = 'pendente'
+         AND strftime('%m', data_lancamento) = ?
+         AND strftime('%Y', data_lancamento) = ?`,
+      [usuario_id, mesPadrao, ano]
+    );
+
+    const porCategoria = await db.all(
+      `SELECT c.nome, c.icone, c.cor, COALESCE(SUM(l.valor),0) AS total
+       FROM categorias c
+       LEFT JOIN lancamentos l ON l.categoria_id = c.id
+         AND l.usuario_id = ?
+         AND l.status = 'pago'
+         AND strftime('%m', l.data_lancamento) = ?
+         AND strftime('%Y', l.data_lancamento) = ?
+       WHERE c.tipo = 'despesa'
+       GROUP BY c.id
+       ORDER BY total DESC`,
+      [usuario_id, mesPadrao, ano]
+    );
+
+    const saldo = Number(receitas.total || 0) - Number(despesas.total || 0);
+
+    return res.json({
+      receitas: Number(receitas.total || 0),
+      despesas: Number(despesas.total || 0),
+      pendentes: Number(pendentes.total || 0),
+      saldo,
+      porCategoria
+    });
+  } catch (erro) {
+    return res.status(500).json({ erro: erro.message });
+  }
+});
+
+export default router;

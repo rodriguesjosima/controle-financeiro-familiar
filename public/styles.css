@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Controle Financeiro Familiar</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-badge">💰</div>
+          <div>
+            <h1>Financeira</h1>
+            <small>Família</small>
+          </div>
+        </div>
+
+        <nav class="nav">
+          <button class="nav-item active" data-tab="dashboard">Dashboard</button>
+          <button class="nav-item" data-tab="lancamentos">Lançamentos</button>
+          <button class="nav-item" data-tab="recorrentes">Recorrentes</button>
+          <button class="nav-item" data-tab="usuarios">Usuários</button>
+        </nav>
+
+        <div class="user-panel">
+          <label for="usuarioSelect">Usuário atual</label>
+          <select id="usuarioSelect"></select>
+          <button id="btnAddUsuario" class="secondary-btn">Adicionar usuário</button>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Painel familiar</p>
+            <h2>Controle financeiro</h2>
+          </div>
+          <div class="header-actions">
+            <input type="month" id="mesFiltro" />
+          </div>
+        </header>
+
+        <section id="dashboard" class="tab-content active">
+          <div class="summary-grid">
+            <article class="card summary-card income">
+              <span>Receitas</span>
+              <strong id="receitasTotal">R$ 0,00</strong>
+            </article>
+            <article class="card summary-card expense">
+              <span>Despesas</span>
+              <strong id="despesasTotal">R$ 0,00</strong>
+            </article>
+            <article class="card summary-card pending">
+              <span>Pendentes</span>
+              <strong id="pendentesTotal">R$ 0,00</strong>
+            </article>
+            <article class="card summary-card balance">
+              <span>Saldo</span>
+              <strong id="saldoTotal">R$ 0,00</strong>
+            </article>
+          </div>
+
+          <div class="charts-grid">
+            <div class="card">
+              <h3>Gastos por categoria</h3>
+              <div id="categoriaList" class="category-list"></div>
+            </div>
+
+            <div class="card">
+              <h3>Resumo mensal</h3>
+              <ul id="resumoLista" class="simple-list"></ul>
+            </div>
+          </div>
+        </section>
+
+        <section id="lancamentos" class="tab-content">
+          <div class="panel-grid">
+            <div class="card form-card">
+              <h3>Novo lançamento</h3>
+              <form id="formLancamento">
+                <div class="grid two-columns">
+                  <div>
+                    <label>Tipo</label>
+                    <select name="tipo" required>
+                      <option value="despesa">Despesa</option>
+                      <option value="receita">Receita</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Categoria</label>
+                    <select name="categoria_id" id="categoriaSelect" required></select>
+                  </div>
+                </div>
+
+                <div class="grid two-columns">
+                  <div>
+                    <label>Descrição</label>
+                    <input type="text" name="descricao" placeholder="Ex: Mercado, Salário..." required />
+                  </div>
+                  <div>
+                    <label>Valor</label>
+                    <input type="number" name="valor" step="0.01" min="0" required />
+                  </div>
+                </div>
+
+                <div class="grid two-columns">
+                  <div>
+                    <label>Data</label>
+                    <input type="date" name="data_lancamento" required />
+                  </div>
+                  <div>
+                    <label>Status</label>
+                    <select name="status">
+                      <option value="pendente">Pendente</option>
+                      <option value="pago">Pago</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label>Notas</label>
+                  <textarea name="notas" rows="3" placeholder="Observações"></textarea>
+                </div>
+
+                <button type="submit" class="primary-btn">Salvar lançamento</button>
+              </form>
+            </div>
+
+            <div class="card list-card">
+              <h3>Últimos lançamentos</h3>
+              <div id="lancamentosTable" class="table-wrapper"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="recorrentes" class="tab-content">
+          <div class="panel-grid">
+            <div class="card form-card">
+              <h3>Nova recorrência</h3>
+              <form id="formRecorrencia">
+                <div class="grid two-columns">
+                  <div>
+                    <label>Tipo</label>
+                    <select name="tipo" required>
+                      <option value="despesa">Despesa recorrente</option>
+                      <option value="receita">Receita recorrente</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Categoria</label>
+                    <select name="categoria_id" id="categoriaRecorrencia" required></select>
+                  </div>
+                </div>
+
+                <div class="grid two-columns">
+                  <div>
+                    <label>Descrição</label>
+                    <input type="text" name="descricao" placeholder="Ex: Internet, aluguel..." required />
+                  </div>
+                  <div>
+                    <label>Valor</label>
+                    <input type="number" name="valor" step="0.01" min="0" required />
+                  </div>
+                </div>
+
+                <div class="grid two-columns">
+                  <div>
+                    <label>Frequência</label>
+                    <select name="frequencia" required>
+                      <option value="mensal">Mensal</option>
+                      <option value="semanal">Semanal</option>
+                      <option value="trimestral">Trimestral</option>
+                      <option value="anual">Anual</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label>Dia do mês</label>
+                    <input type="number" name="dia_mes" min="1" max="31" value="1" />
+                  </div>
+                </div>
+
+                <div>
+                  <label>Data de início</label>
+                  <input type="date" name="data_inicio" required />
+                </div>
+
+                <button type="submit" class="primary-btn">Salvar recorrência</button>
+              </form>
+            </div>
+
+            <div class="card list-card">
+              <h3>Recorrências</h3>
+              <div id="recorrenciasList" class="list-items"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="usuarios" class="tab-content">
+          <div class="card users-card">
+            <h3>Gerenciar usuários</h3>
+            <div class="user-form-row">
+              <input id="novoNome" type="text" placeholder="Nome completo" />
+              <input id="novoEmail" type="email" placeholder="E-mail" />
+              <input id="novaSenha" type="password" placeholder="Senha" />
+              <button id="registrarUsuarioBtn" class="primary-btn">Adicionar</button>
+            </div>
+            <div id="usuariosList" class="users-list"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="modalUsuario" class="modal hidden">
+      <div class="modal-content">
+        <h3>Novo usuário</h3>
+        <div class="modal-form">
+          <input id="modalNome" type="text" placeholder="Nome" />
+          <input id="modalEmail" type="email" placeholder="E-mail" />
+          <input id="modalSenha" type="password" placeholder="Senha" />
+          <div class="modal-actions">
+            <button id="confirmarUsuario" class="primary-btn">Salvar</button>
+            <button id="cancelarUsuario" class="secondary-btn">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

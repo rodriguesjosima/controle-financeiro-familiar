@@ -1,87 +1,75 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { getDatabase } from '../database.js';
 
 const router = express.Router();
+const SECRET = process.env.JWT_SECRET || 'familia-financeira-secret';
 
-// Criar lançamento
-router.post('/', async (req, res) => {
+router.post('/registrar', async (req, res) => {
   try {
-    const { usuario_id, categoria_id, tipo, descricao, valor, data_lancamento, status, notas } = req.body;
+    const { nome, email, senha } = req.body;
     const db = getDatabase();
 
-    await db.run(
-      `INSERT INTO lancamentos (usuario_id, categoria_id, tipo, descricao, valor, data_lancamento, status, notas)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [usuario_id, categoria_id, tipo, descricao, valor, data_lancamento, status || 'pendente', notas || '']
+    if (!nome || !email || !senha) {
+      return res.status(400).json({ erro: 'Nome, email e senha são obrigatórios.' });
+    }
+
+    const senhaHash = await bcrypt.hash(senha, 10);
+
+    const result = await db.run(
+      'INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)',
+      [nome, email, senhaHash]
     );
 
-    res.status(201).json({ mensagem: 'Lançamento criado com sucesso' });
+    return res.status(201).json({
+      mensagem: 'Usuário criado com sucesso.',
+      usuario: { id: result.lastID, nome, email }
+    });
   } catch (erro) {
-    res.status(500).json({ erro: erro.message });
+    return res.status(500).json({ erro: erro.message });
   }
 });
 
-// Listar lançamentos
+router.post('/login', async (req, res) => {
+  try {
+    const { email, senha } = req.body;
+    const db = getDatabase();
+
+    if (!email || !senha) {
+      return res.status(400).json({ erro: 'Email e senha são obrigatórios.' });
+    }
+
+    const usuario = await db.get('SELECT * FROM usuarios WHERE email = ?', [email]);
+
+    if (!usuario) {
+      return res.status(401).json({ erro: 'Usuário não encontrado.' });
+    }
+
+    const senhaValida = await bcrypt.compare(senha, usuario.senha);
+
+    if (!senhaValida) {
+      return res.status(401).json({ erro: 'Senha incorreta.' });
+    }
+
+    const token = jwt.sign({ id: usuario.id, nome: usuario.nome }, SECRET, { expiresIn: '7d' });
+
+    return res.json({
+      token,
+      usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email }
+    });
+  } catch (erro) {
+    return res.status(500).json({ erro: erro.message });
+  }
+});
+
 router.get('/', async (req, res) => {
   try {
-    const { usuario_id, mes, ano, status } = req.query;
     const db = getDatabase();
-    let query = 'SELECT l.*, c.nome as categoria FROM lancamentos l JOIN categorias c ON l.categoria_id = c.id WHERE 1=1';
-    const params = [];
-
-    if (usuario_id) {
-      query += ' AND l.usuario_id = ?';
-      params.push(usuario_id);
-    }
-
-    if (mes && ano) {
-      query += ` AND strftime('%m', l.data_lancamento) = ? AND strftime('%Y', l.data_lancamento) = ?`;
-      params.push(String(mes).padStart(2, '0'), ano);
-    }
-
-    if (status) {
-      query += ' AND l.status = ?';
-      params.push(status);
-    }
-
-    query += ' ORDER BY l.data_lancamento DESC';
-
-    const lancamentos = await db.all(query, params);
-    res.json(lancamentos);
+    const usuarios = await db.all('SELECT id, nome, email FROM usuarios WHERE ativo = 1 ORDER BY nome');
+    return res.json(usuarios);
   } catch (erro) {
-    res.status(500).json({ erro: erro.message });
-  }
-});
-
-// Atualizar lançamento
-router.put('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { descricao, valor, status, data_pagamento, notas } = req.body;
-    const db = getDatabase();
-
-    await db.run(
-      `UPDATE lancamentos SET descricao = ?, valor = ?, status = ?, data_pagamento = ?, notas = ?, atualizado_em = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [descricao, valor, status, data_pagamento, notas, id]
-    );
-
-    res.json({ mensagem: 'Lançamento atualizado com sucesso' });
-  } catch (erro) {
-    res.status(500).json({ erro: erro.message });
-  }
-});
-
-// Deletar lançamento
-router.delete('/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const db = getDatabase();
-
-    await db.run('DELETE FROM lancamentos WHERE id = ?', [id]);
-    res.json({ mensagem: 'Lançamento deletado com sucesso' });
-  } catch (erro) {
-    res.status(500).json({ erro: erro.message });
+    return res.status(500).json({ erro: erro.message });
   }
 });
 
