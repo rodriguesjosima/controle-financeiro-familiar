@@ -1,383 +1,436 @@
-:root {
-  --bg: #f5f7fb;
-  --panel: #ffffff;
-  --primary: #2f6fed;
-  --primary-dark: #1d4fc5;
-  --success: #1cab7c;
-  --danger: #ef4d4d;
-  --warning: #f7b267;
-  --text: #1b2430;
-  --muted: #64748b;
-  --line: #e2e8f0;
-  --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+const state = {
+  usuarios: [],
+  usuarioAtual: null,
+  filtroMes: new Date().toISOString().slice(0, 7),
+  categorias: []
+};
+
+const els = {
+  usuarioSelect: document.getElementById('usuarioSelect'),
+  mesFiltro: document.getElementById('mesFiltro'),
+  receitasTotal: document.getElementById('receitasTotal'),
+  despesasTotal: document.getElementById('despesasTotal'),
+  pendentesTotal: document.getElementById('pendentesTotal'),
+  saldoTotal: document.getElementById('saldoTotal'),
+  categoriaList: document.getElementById('categoriaList'),
+  resumoLista: document.getElementById('resumoLista'),
+  lancamentosTable: document.getElementById('lancamentosTable'),
+  recorrenciasList: document.getElementById('recorrenciasList'),
+  usuariosList: document.getElementById('usuariosList'),
+  categoriaSelect: document.getElementById('categoriaSelect'),
+  categoriaRecorrencia: document.getElementById('categoriaRecorrencia'),
+  modalUsuario: document.getElementById('modalUsuario'),
+  novoNome: document.getElementById('novoNome'),
+  novoEmail: document.getElementById('novoEmail'),
+  novaSenha: document.getElementById('novaSenha')
+};
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(Number(value || 0));
 }
 
-* {
-  box-sizing: border-box;
+function toMonthParts(value) {
+  const [year, month] = value.split('-');
+  return { year: Number(year), month: Number(month) };
 }
 
-body {
-  margin: 0;
-  font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #eef5ff, #f7f9ff);
-  color: var(--text);
+function getCurrentMonthFilter() {
+  if (!els.mesFiltro.value) {
+    els.mesFiltro.value = state.filtroMes;
+  }
+  return els.mesFiltro.value;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, options);
+  const contentType = response.headers.get('content-type') || '';
 
-.app-shell {
-  display: flex;
-  min-height: 100vh;
-}
-
-.sidebar {
-  width: 280px;
-  background: #0f172a;
-  color: white;
-  padding: 24px 18px;
-}
-
-.brand {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 30px;
-}
-
-.brand-badge {
-  width: 48px;
-  height: 48px;
-  background: rgba(255,255,255,0.08);
-  display: grid;
-  place-items: center;
-  border-radius: 14px;
-  font-size: 24px;
-}
-
-.brand h1,
-.brand small {
-  margin: 0;
-}
-
-.nav {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.nav-item {
-  border: 0;
-  background: transparent;
-  color: #dfeafc;
-  text-align: left;
-  padding: 12px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.nav-item.active,
-.nav-item:hover {
-  background: rgba(255,255,255,0.08);
-}
-
-.user-panel {
-  margin-top: 30px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.user-panel label {
-  color: #cbd5e1;
-  font-size: 0.9rem;
-}
-
-.user-panel select,
-.user-panel input,
-.user-form-row input,
-.modal-form input,
-.form-card input,
-.form-card select,
-.form-card textarea,
-.user-form-row select {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: #fff;
-}
-
-.content {
-  flex: 1;
-  padding: 28px;
-}
-
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.eyebrow {
-  margin: 0;
-  color: var(--muted);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.7rem;
-}
-
-.topbar h2 {
-  margin: 4px 0 0;
-  font-size: 2rem;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(160px, 1fr));
-  gap: 18px;
-  margin-bottom: 24px;
-}
-
-.card {
-  background: var(--panel);
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow: var(--shadow);
-}
-
-.summary-card {
-  min-height: 120px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.summary-card span {
-  color: var(--muted);
-  font-weight: 700;
-}
-
-.summary-card strong {
-  font-size: clamp(1.3rem, 2vw, 2rem);
-}
-
-.summary-card.income strong {
-  color: var(--success);
-}
-
-.summary-card.expense strong {
-  color: var(--danger);
-}
-
-.summary-card.pending strong {
-  color: var(--warning);
-}
-
-.summary-card.balance strong {
-  color: var(--primary);
-}
-
-.charts-grid,
-.panel-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-.category-list,
-.simple-list,
-.list-items,
-.users-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.category-item,
-.user-row,
-.recorrencia-item,
-.list-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.category-item strong,
-.user-row strong {
-  display: inline-block;
-  min-width: 100px;
-}
-
-.primary-btn,
-.secondary-btn,
-.delete-btn,
-.status-btn {
-  border: none;
-  border-radius: 10px;
-  padding: 10px 14px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.primary-btn {
-  background: var(--primary);
-  color: white;
-}
-
-.primary-btn:hover {
-  background: var(--primary-dark);
-}
-
-.secondary-btn {
-  background: #edf2ff;
-  color: var(--primary);
-}
-
-.delete-btn {
-  background: #fff0f0;
-  color: var(--danger);
-}
-
-.status-btn {
-  background: #eafaf3;
-  color: var(--success);
-}
-
-.tab-content {
-  display: none;
-}
-
-.tab-content.active {
-  display: block;
-}
-
-.grid.two-columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.form-card,
-.list-card,
-.users-card {
-  min-height: 300px;
-}
-
-.form-card form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-label {
-  display: block;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-
-.table-wrapper table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.table-wrapper th,
-.table-wrapper td {
-  text-align: left;
-  padding: 10px 8px;
-  border-bottom: 1px solid var(--line);
-  vertical-align: top;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 700;
-}
-
-.badge.pago {
-  background: #eafaf3;
-  color: var(--success);
-}
-
-.badge.pendente {
-  background: #fff7e6;
-  color: var(--warning);
-}
-
-.user-form-row {
-  display: grid;
-  grid-template-columns: 1.3fr 1.3fr 1fr auto;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.users-list {
-  margin-top: 12px;
-}
-
-.modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.52);
-  display: grid;
-  place-items: center;
-  z-index: 20;
-}
-
-.modal.hidden {
-  display: none;
-}
-
-.modal-content {
-  width: min(420px, 90vw);
-  background: white;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: var(--shadow);
-}
-
-.modal-form {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 12px;
-}
-
-@media (max-width: 980px) {
-  .app-shell {
-    flex-direction: column;
+  if (!response.ok) {
+    const errorMessage = contentType.includes('application/json')
+      ? (await response.json()).erro || 'Erro ao processar a requisição.'
+      : 'Erro ao processar a requisição.';
+    throw new Error(errorMessage);
   }
 
-  .sidebar {
-    width: 100%;
-  }
+  return contentType.includes('application/json') ? response.json() : response.text();
+}
 
-  .summary-grid,
-  .charts-grid,
-  .panel-grid,
-  .grid.two-columns,
-  .user-form-row {
-    grid-template-columns: 1fr;
+async function loadUsuarios() {
+  try {
+    const usuarios = await fetchJson('/api/usuarios');
+    state.usuarios = usuarios;
+
+    els.usuarioSelect.innerHTML = usuarios.map(
+      (usuario) => `<option value="${usuario.id}">${usuario.nome}</option>`
+    ).join('') || '<option value="">Nenhum usuário</option>';
+
+    if (usuarios.length) {
+      const selected = Number(localStorage.getItem('usuarioAtual') || usuarios[0].id);
+      const usuarioAtivo = usuarios.find((u) => u.id === selected) || usuarios[0];
+      state.usuarioAtual = usuarioAtivo.id;
+      els.usuarioSelect.value = String(usuarioAtivo.id);
+      localStorage.setItem('usuarioAtual', String(usuarioAtivo.id));
+    } else {
+      state.usuarioAtual = null;
+      els.usuarioSelect.innerHTML = '<option value="">Nenhum usuário</option>';
+    }
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
   }
 }
+
+async function loadCategorias() {
+  try {
+    const categorias = await fetchJson('/api/categorias');
+    state.categorias = categorias;
+
+    const options = categorias.map(
+      (categoria) => `<option value="${categoria.id}">${categoria.icone || '🧾'} ${categoria.nome}</option>`
+    ).join('');
+
+    els.categoriaSelect.innerHTML = options;
+    els.categoriaRecorrencia.innerHTML = options;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function loadResumo() {
+  if (!state.usuarioAtual) {
+    els.receitasTotal.textContent = formatCurrency(0);
+    els.despesasTotal.textContent = formatCurrency(0);
+    els.pendentesTotal.textContent = formatCurrency(0);
+    els.saldoTotal.textContent = formatCurrency(0);
+    els.categoriaList.innerHTML = '<p>Nenhuma despesa registrada.</p>';
+    els.resumoLista.innerHTML = '<li><strong>Receitas:</strong> R$ 0,00</li><li><strong>Despesas:</strong> R$ 0,00</li><li><strong>Pendentes:</strong> R$ 0,00</li><li><strong>Saldo:</strong> R$ 0,00</li>';
+    return;
+  }
+
+  const { year, month } = toMonthParts(getCurrentMonthFilter());
+  try {
+    const dados = await fetchJson(`/api/resumo?usuario_id=${state.usuarioAtual}&mes=${month}&ano=${year}`);
+
+    els.receitasTotal.textContent = formatCurrency(dados.receitas || 0);
+    els.despesasTotal.textContent = formatCurrency(dados.despesas || 0);
+    els.pendentesTotal.textContent = formatCurrency(dados.pendentes || 0);
+    els.saldoTotal.textContent = formatCurrency(dados.saldo || 0);
+
+    els.categoriaList.innerHTML = (dados.porCategoria || []).map((categoria) => `
+      <div class="category-item">
+        <div>
+          <span>${categoria.icone || '🧾'} ${categoria.nome}</span>
+        </div>
+        <strong>${formatCurrency(categoria.total)}</strong>
+      </div>
+    `).join('') || '<p>Nenhuma despesa registrada.</p>';
+
+    els.resumoLista.innerHTML = `
+      <li><strong>Receitas:</strong> ${formatCurrency(dados.receitas || 0)}</li>
+      <li><strong>Despesas:</strong> ${formatCurrency(dados.despesas || 0)}</li>
+      <li><strong>Pendentes:</strong> ${formatCurrency(dados.pendentes || 0)}</li>
+      <li><strong>Saldo:</strong> ${formatCurrency(dados.saldo || 0)}</li>
+    `;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function loadLancamentos() {
+  if (!state.usuarioAtual) {
+    els.lancamentosTable.innerHTML = '<p>Cadastre um usuário para começar.</p>';
+    return;
+  }
+
+  const { year, month } = toMonthParts(getCurrentMonthFilter());
+  try {
+    const lancamentos = await fetchJson(`/api/lancamentos?usuario_id=${state.usuarioAtual}&mes=${month}&ano=${year}`);
+
+    const rows = (lancamentos || []).map((lancamento) => `
+      <tr>
+        <td>${lancamento.categoria_icone || '🧾'} ${lancamento.categoria}</td>
+        <td>${lancamento.descricao}</td>
+        <td>${lancamento.tipo === 'receita' ? 'Receita' : 'Despesa'}</td>
+        <td>${formatCurrency(lancamento.valor)}</td>
+        <td>${new Date(lancamento.data_lancamento).toLocaleDateString('pt-BR')}</td>
+        <td><span class="badge ${lancamento.status}">${lancamento.status}</span></td>
+        <td>
+          <button class="status-btn" data-action="toggleStatus" data-id="${lancamento.id}">Marcar ${lancamento.status === 'pago' ? 'pendente' : 'pago'}</button>
+          <button class="delete-btn" data-action="deleteLancamento" data-id="${lancamento.id}">Excluir</button>
+        </td>
+      </tr>
+    `).join('');
+
+    els.lancamentosTable.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Categoria</th>
+            <th>Descrição</th>
+            <th>Tipo</th>
+            <th>Valor</th>
+            <th>Data</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>${rows || '<tr><td colspan="7">Nenhum lançamento encontrado.</td></tr>'}</tbody>
+      </table>
+    `;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function loadRecorrencias() {
+  if (!state.usuarioAtual) {
+    els.recorrenciasList.innerHTML = '<p>Cadastre um usuário para criar recorrências.</p>';
+    return;
+  }
+
+  try {
+    const recorrencias = await fetchJson(`/api/recorrencias?usuario_id=${state.usuarioAtual}&ativa=true`);
+
+    els.recorrenciasList.innerHTML = (recorrencias || []).map((item) => `
+      <div class="recorrencia-item">
+        <div>
+          <strong>${item.categoria_icone || '🧾'} ${item.descricao}</strong>
+          <div>${item.frequencia} · ${formatCurrency(item.valor)}</div>
+        </div>
+        <button class="delete-btn" data-action="deleteRecorrencia" data-id="${item.id}">Excluir</button>
+      </div>
+    `).join('') || '<p>Nenhuma recorrência ativa.</p>';
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function loadUsuariosLista() {
+  try {
+    const usuarios = await fetchJson('/api/usuarios');
+    els.usuariosList.innerHTML = usuarios.map((usuario) => `
+      <div class="user-row">
+        <strong>${usuario.nome}</strong>
+        <span>${usuario.email}</span>
+      </div>
+    `).join('') || '<p>Nenhum usuário cadastrado.</p>';
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function criarUsuario(nome, email, senha) {
+  const response = await fetchJson('/api/usuarios/registrar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nome, email, senha })
+  });
+  return response;
+}
+
+async function createLancamento(formData) {
+  const payload = {
+    usuario_id: Number(state.usuarioAtual),
+    categoria_id: Number(formData.get('categoria_id')),
+    tipo: formData.get('tipo'),
+    descricao: formData.get('descricao'),
+    valor: Number(formData.get('valor')),
+    data_lancamento: formData.get('data_lancamento'),
+    status: formData.get('status'),
+    notas: formData.get('notas')
+  };
+
+  return fetchJson('/api/lancamentos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
+
+async function createRecorrencia(formData) {
+  const payload = {
+    usuario_id: Number(state.usuarioAtual),
+    categoria_id: Number(formData.get('categoria_id')),
+    tipo: formData.get('tipo'),
+    descricao: formData.get('descricao'),
+    valor: Number(formData.get('valor')),
+    frequencia: formData.get('frequencia'),
+    dia_mes: Number(formData.get('dia_mes')),
+    data_inicio: formData.get('data_inicio'),
+    ativa: true
+  };
+
+  return fetchJson('/api/recorrencias', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+}
+
+async function toggleLancamentoStatus(id) {
+  const lista = await fetchJson(`/api/lancamentos?usuario_id=${state.usuarioAtual}`);
+  const item = lista.find((entry) => Number(entry.id) === Number(id));
+
+  if (!item) {
+    return;
+  }
+
+  const proximoStatus = item.status === 'pago' ? 'pendente' : 'pago';
+
+  await fetchJson(`/api/lancamentos/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      descricao: item.descricao,
+      valor: item.valor,
+      status: proximoStatus,
+      data_pagamento: proximoStatus === 'pago' ? item.data_lancamento : null,
+      notas: item.notas || '',
+      categoria_id: item.categoria_id,
+      tipo: item.tipo
+    })
+  });
+}
+
+async function excluirLancamento(id) {
+  await fetchJson(`/api/lancamentos/${id}`, { method: 'DELETE' });
+}
+
+async function excluirRecorrencia(id) {
+  await fetchJson(`/api/recorrencias/${id}`, { method: 'DELETE' });
+}
+
+function bindTabs() {
+  document.querySelectorAll('.nav-item').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach((item) => item.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach((panel) => panel.classList.remove('active'));
+      button.classList.add('active');
+      document.getElementById(button.dataset.tab).classList.add('active');
+    });
+  });
+}
+
+async function refreshAll() {
+  await loadUsuarios();
+  await loadCategorias();
+  await loadUsuariosLista();
+  await loadResumo();
+  await loadLancamentos();
+  await loadRecorrencias();
+}
+
+async function init() {
+  bindTabs();
+  els.mesFiltro.value = state.filtroMes;
+
+  await refreshAll();
+
+  els.usuarioSelect.addEventListener('change', (event) => {
+    state.usuarioAtual = Number(event.target.value);
+    localStorage.setItem('usuarioAtual', String(state.usuarioAtual));
+    refreshAll();
+  });
+
+  els.mesFiltro.addEventListener('change', () => {
+    state.filtroMes = els.mesFiltro.value;
+    refreshAll();
+  });
+
+  document.getElementById('formLancamento').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!state.usuarioAtual) {
+      alert('Cadastre um usuário primeiro.');
+      return;
+    }
+
+    const form = new FormData(event.target);
+    await createLancamento(form);
+    event.target.reset();
+    refreshAll();
+  });
+
+  document.getElementById('formRecorrencia').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!state.usuarioAtual) {
+      alert('Cadastre um usuário primeiro.');
+      return;
+    }
+
+    const form = new FormData(event.target);
+    await createRecorrencia(form);
+    event.target.reset();
+    refreshAll();
+  });
+
+  document.getElementById('registrarUsuarioBtn').addEventListener('click', async () => {
+    const nome = els.novoNome.value.trim();
+    const email = els.novoEmail.value.trim();
+    const senha = els.novaSenha.value.trim();
+
+    if (!nome || !email || !senha) {
+      alert('Preencha nome, e-mail e senha.');
+      return;
+    }
+
+    await criarUsuario(nome, email, senha);
+    els.novoNome.value = '';
+    els.novoEmail.value = '';
+    els.novaSenha.value = '';
+    await refreshAll();
+  });
+
+  document.getElementById('btnAddUsuario').addEventListener('click', () => {
+    els.modalUsuario.classList.remove('hidden');
+  });
+
+  document.getElementById('cancelarUsuario').addEventListener('click', () => {
+    els.modalUsuario.classList.add('hidden');
+  });
+
+  document.getElementById('confirmarUsuario').addEventListener('click', async () => {
+    const nome = document.getElementById('modalNome').value.trim();
+    const email = document.getElementById('modalEmail').value.trim();
+    const senha = document.getElementById('modalSenha').value.trim();
+
+    if (!nome || !email || !senha) {
+      alert('Preencha todos os campos.');
+      return;
+    }
+
+    await criarUsuario(nome, email, senha);
+    els.modalUsuario.classList.add('hidden');
+    document.getElementById('modalNome').value = '';
+    document.getElementById('modalEmail').value = '';
+    document.getElementById('modalSenha').value = '';
+    await refreshAll();
+  });
+
+  document.addEventListener('click', async (event) => {
+    const button = event.target.closest('button');
+    if (!button) return;
+
+    const action = button.dataset.action;
+    const id = button.dataset.id;
+
+    if (action === 'toggleStatus') {
+      await toggleLancamentoStatus(id);
+      await refreshAll();
+    }
+
+    if (action === 'deleteLancamento') {
+      await excluirLancamento(id);
+      await refreshAll();
+    }
+
+    if (action === 'deleteRecorrencia') {
+      await excluirRecorrencia(id);
+      await refreshAll();
+    }
+  });
+}
+
+init();
